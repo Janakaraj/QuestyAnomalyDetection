@@ -1,3 +1,4 @@
+const video = document.getElementById('webcam');
 var modelLoadedEvent = new CustomEvent('modelLoaded');
 var stopFlag = false;
 
@@ -9,7 +10,6 @@ var MPDArray = [];
 var PCDArray = [];
 var postArray = [];
 
-var jwtToken = "";
 var userId;
 
 var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
@@ -29,21 +29,16 @@ blazeface.load().then(function (loadedFmodel) {
     });
 });
 stopButton.addEventListener('click', stopCam);
+window.setInterval(function () { postDataFromArray() }, 1000);
 function initData(token, userid) {
-    jwtToken = localStorage.setItem('auth_token', token);
+    localStorage.setItem('auth_token', token);
     userId = userid;
 }
 
-function startDetection() {
-    // Only continue if the models has finished loading.
-    if (!objectDetectionModel && !fdmodel) {
-        return;
-    }
+video.addEventListener('loadeddata', detectFaces);
+video.addEventListener('loadeddata', detectObjects);
+video.addEventListener('loadeddata', detectCalls);
 
-    video.addEventListener('loadeddata', detectFaces);
-    video.addEventListener('loadeddata', detectObjects);
-    video.addEventListener('loadeddata', detectCalls);
-}
 
 async function detectObjects() {
     if (!stopFlag) {
@@ -92,13 +87,6 @@ async function detectFaces() {
                         capture("mpd", timeStamp);
                         console.log("Muttiple people were detected at " + timeStamp);
                     }
-                    //if user's face is covered
-                    if (predictions[0].probability < 0.97) {
-                        var date = new Date();
-                        var timeStamp = date.getTime();
-                        capture("ufc", timeStamp);
-                        console.log("Users face is covered at: " + timeStamp);
-                    }
                     //if person is not in the centre of the frame
                     if (predictions[i].bottomRight[0] < 170 || predictions[i].bottomRight[0] > 650 || predictions[i].bottomRight[1] > 450 || predictions[i].bottomRight[1] < 140) {
                         var date = new Date();
@@ -106,6 +94,14 @@ async function detectFaces() {
                         capture("upp", timeStamp);
                         console.log("Person detected partially at " + timeStamp);
                     }
+                    //if user's face is covered
+                    else if (predictions[0].probability < 0.97) {
+                        var date = new Date();
+                        var timeStamp = date.getTime();
+                        capture("ufc", timeStamp);
+                        console.log("Users face is covered at: " + timeStamp);
+                    }
+
                 }
             }
         }
@@ -147,25 +143,12 @@ function stopCam() {
     calculateLastAnomalyDuration(EDFArray);
     calculateLastAnomalyDuration(UFCArray);
     postArray.push(PCDArray[PCDArray.length - 1]);
-    console.log(postArray);
 }
 
 function capture(label, timestamp) {
     var canvas = document.getElementById('canvas');
-    // postData(JSON.stringify(data));
+    // capture
     canvas.toBlob(function (blob) {
-        // var fd = new FormData();
-        // fd.append('userid', 1)
-        // fd.append('imageData', blob);
-        // fd.append('anomalyLabel', label);
-        // fd.append('timestamp', timestamp);
-
-        // const data = new URLSearchParams();
-        // for (const pair of fd) {
-        //     data.append(pair[0], pair[1]);
-        // }
-
-        //save captured anomaly data in respective arrays
         if (label == "unp") {
             addToArray(timestamp, blob, "unp", UNPArray);
         }
@@ -181,36 +164,31 @@ function capture(label, timestamp) {
         if (label == "ufc") {
             addToArray(timestamp, blob, "ufc", UFCArray);
         }
-
-        console.log(UNPArray, MPDArray, UPPArray, EDFArray, UFCArray, PCDArray);
-        // if (UNPArray.length > 4) {
-        //     fakePost(UNPArray);
-        // }
-        // console.log(UNPArray);
-        //postData(fd);
     });
 }
-// async function fakePost(dataArray) {
-//     if (dataArray.length > 6) {
-//         //await delete
-//         console.log("posted a pair");
-//         console.log("deleteing a pair");
-//         //dataArray.splice(i,2);
-//         console.log(dataArray);
-//     }
-// }
-function postAnomalyData(anomalyData) {
-    fetch("https://localhost:44331/api/data", {
+
+async function postAnomalyData(anomalyData) {
+    var fd = new FormData();
+    fd.append('userid', userId)
+    fd.append('timestamp', anomalyData.timestamp);
+    fd.append('image', anomalyData.imageData);
+    fd.append('anomalyLabel', anomalyData.label);
+    fd.append('isFirst', anomalyData.isFirst);
+    fd.append('isLast', anomalyData.isLast);
+    fd.append('duration', anomalyData.duration)
+
+    await fetch("https://localhost:44331/api/Data", {
 
         // Adding method type 
         method: "POST",
 
         // Adding body or contents to send 
-        body: anomalyData,
+        body: fd,
 
         // Adding headers to the request 
         headers: {
-            "Content-type": "application/json"
+            //"Content-type": "application/octet-stream",
+            "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
         }
     })
         // Converting to JSON 
@@ -226,6 +204,7 @@ function addToArray(timestamp, imageData, label, dataArray) {
     if (dataArray.length == 0) {
         newEntry.isFirst = true;
         dataArray.push(newEntry);
+        postAnomalyData(newEntry);
     }
     else {
         //discard single frame captures
@@ -237,7 +216,7 @@ function addToArray(timestamp, imageData, label, dataArray) {
             dataArray[dataArray.length - 1].isLast = true;
             newEntry.isFirst = true;
             dataArray.push(newEntry);
-            //postAnomalyData(JSON.parse(JSON.stringify(newEntry)));
+            postAnomalyData(newEntry);
             if (dataArray.length >= 3 && dataArray[dataArray.length - 2].isLast == true && dataArray[dataArray.length - 3].isFirst == true) {
                 dataArray[dataArray.length - 2].duration = dataArray[dataArray.length - 2].timestamp - dataArray[dataArray.length - 3].timestamp;
                 postArray.push(dataArray[dataArray.length - 2]);
@@ -258,16 +237,17 @@ function addToArray(timestamp, imageData, label, dataArray) {
 }
 function addToPCDArray(timestamp, imageData, label, first, last) {
     var newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
-    //check time interval. If greater than 10 seconds, calculate duration and save the snapshot
+    //check time interval. if time interval is less than 10 seconds replace the older snapshot with new one
     if (PCDArray.length > 0 && newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp < 10000) {
         newEntry.duration = newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp + PCDArray[PCDArray.length - 1].duration;
         PCDArray.pop();
         PCDArray.push(newEntry);
     }
-    //if time interval is less than 10 seconds replace the older snapshot with new one
+    //If greater than 10 seconds, save the snapshot 
     else {
         postArray.push(PCDArray[PCDArray.length - 1]);
         PCDArray.push(newEntry);
+        postAnomalyData(newEntry);
     }
 
 
@@ -278,6 +258,15 @@ function calculateLastAnomalyDuration(dataArray) {
             dataArray[dataArray.length - 1].duration = dataArray[dataArray.length - 1].timestamp - dataArray[dataArray.length - 2].timestamp;
             dataArray[dataArray.length - 1].isLast = true;
             postArray.push(dataArray[dataArray.length - 1]);
+        }
+    }
+}
+function postDataFromArray() {
+    if (postArray.length > 1) {
+        if (postArray[0]) {
+            postAnomalyData(postArray[0]);
+            postArray.splice(0, 1);
+            console.log(postArray);
         }
     }
 }

@@ -1,5 +1,5 @@
 const stopButton = document.getElementById('stopButton');
-const video = document.getElementById('webcam');
+
 initData("abc",1);
 if (getUserMediaSupported()) {
     document.addEventListener('modelLoaded', enableCam);
@@ -36,7 +36,7 @@ function enableCam() {
     );
     navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
         video.srcObject = stream;
-        startDetection();        
+        //startDetection();        
         //video.addEventListener('loadeddata', detectFaces(video));
         //video.addEventListener('loadeddata', detectObjects(video));
     });
