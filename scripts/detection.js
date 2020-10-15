@@ -29,7 +29,7 @@ blazeface.load().then(function (loadedFmodel) {
     });
 });
 stopButton.addEventListener('click', stopCam);
-window.setInterval(function () { postDataFromArray() }, 1000);
+window.setInterval(function () { postDataFromArray(); }, 1000);
 function initData(token, userid) {
     localStorage.setItem('auth_token', token);
     userId = userid;
@@ -63,8 +63,6 @@ async function detectObjects() {
             window.setTimeout(function () { reqId = window.requestAnimationFrame(detectObjects) }, 1000);
         });
     }
-
-
 }
 
 async function detectFaces() {
@@ -129,6 +127,7 @@ function detectCalls() {
     // start recognition
     recognition.start();
 }
+
 function stopCam() {
     window.cancelAnimationFrame(reqId);
     video.srcObject.getTracks().forEach(function (track) {
@@ -235,6 +234,7 @@ function addToArray(timestamp, imageData, label, dataArray) {
         }
     }
 }
+
 function addToPCDArray(timestamp, imageData, label, first, last) {
     var newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
     //check time interval. if time interval is less than 10 seconds replace the older snapshot with new one
@@ -252,6 +252,7 @@ function addToPCDArray(timestamp, imageData, label, first, last) {
 
 
 }
+
 function calculateLastAnomalyDuration(dataArray) {
     if (dataArray.length > 1) {
         if (dataArray[dataArray.length - 2].isFirst == true) {
@@ -261,12 +262,11 @@ function calculateLastAnomalyDuration(dataArray) {
         }
     }
 }
+//posts data from the postArray as soon as it is computed
 function postDataFromArray() {
-    if (postArray.length > 1) {
-        if (postArray[0]) {
-            postAnomalyData(postArray[0]);
-            postArray.splice(0, 1);
-            console.log(postArray);
-        }
+    if (postArray.length > 0) {
+        postAnomalyData(postArray[0]);
+        postArray.splice(0, 1);
+        console.log(postArray);
     }
 }
