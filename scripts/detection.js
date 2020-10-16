@@ -144,6 +144,8 @@ function stopCam() {
     calculateLastAnomalyDuration(EDFArray);
     calculateLastAnomalyDuration(UFCArray);
     postArray.push(PCDArray[PCDArray.length - 1]);
+    //clear localStorage
+    localStorage.clear();
 }
 
 function capture(label, timestamp) {
