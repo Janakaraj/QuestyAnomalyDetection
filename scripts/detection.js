@@ -11,6 +11,7 @@ let PCDArray = [];
 let postArray = [];
 
 let userId;
+let auth_token;
 
 var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
 var recognition = new SpeechRecognition();
@@ -145,7 +146,7 @@ function stopCam() {
     calculateLastAnomalyDuration(UFCArray);
     postArray.push(PCDArray[PCDArray.length - 1]);
     //clear localStorage
-    localStorage.clear();
+    auth_token="";
 }
 
 function capture(label, timestamp) {
@@ -191,7 +192,7 @@ async function postAnomalyData(anomalyData) {
         // Adding headers to the request 
         headers: {
             //"Content-type": "application/octet-stream",
-            "Authorization": `Bearer ${localStorage.getItem('auth_token')}`
+            "Authorization": `Bearer ${auth_token}`
         }
     })
         // Converting to JSON 
@@ -241,6 +242,11 @@ function addToArray(timestamp, imageData, label, dataArray) {
 
 function addToPCDArray(timestamp, imageData, label, first, last) {
     let newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
+    if (PCDArray.length == 0) {
+        newEntry.isFirst = true;
+        PCDArray.push(newEntry);
+        postAnomalyData(newEntry);
+    }
     //check time interval. if time interval is less than 10 seconds replace the older snapshot with new one
     if (PCDArray.length > 0 && newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp < 10000) {
         newEntry.duration = newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp + PCDArray[PCDArray.length - 1].duration;
