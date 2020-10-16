@@ -1,16 +1,16 @@
 const video = document.getElementById('webcam');
-var modelLoadedEvent = new CustomEvent('modelLoaded');
-var stopFlag = false;
+let modelLoadedEvent = new CustomEvent('modelLoaded');
+let stopFlag = false;
 
-var UNPArray = [];
-var UFCArray = [];
-var UPPArray = [];
-var EDFArray = [];
-var MPDArray = [];
-var PCDArray = [];
-var postArray = [];
+let UNPArray = [];
+let UFCArray = [];
+let UPPArray = [];
+let EDFArray = [];
+let MPDArray = [];
+let PCDArray = [];
+let postArray = [];
 
-var userId;
+let userId;
 
 var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
 var recognition = new SpeechRecognition();
@@ -52,8 +52,8 @@ async function detectObjects() {
                             || predictions[n].class == "laptop"
                             || predictions[n].class == "remote"
                             || predictions[n].class == "tv") {
-                            var date = new Date();
-                            var timeStamp = date.getTime();
+                            let date = new Date();
+                            let timeStamp = date.getTime();
                             capture("edf", timeStamp);
                             console.log("Electronic device detected at " + timeStamp);
                         }
@@ -69,8 +69,8 @@ async function detectFaces() {
     if (!stopFlag) {
         const predictions = await fdmodel.estimateFaces(video, false);
         if (predictions.length == 0) {
-            var date = new Date();
-            var timeStamp = date.getTime();
+            let date = new Date();
+            let timeStamp = date.getTime();
             capture("unp", timeStamp);
             console.log("User not present at " + timeStamp);
         }
@@ -79,8 +79,8 @@ async function detectFaces() {
                 if (predictions[i].probability > 0.66) {
                     //if multiple people are detected
                     if (predictions.length > 1) {
-                        var date = new Date();
-                        var timeStamp = date.getTime();
+                        let date = new Date();
+                        let timeStamp = date.getTime();
                         capture("mpd", timeStamp);
                         console.log("Muttiple people were detected at " + timeStamp);
                     }
@@ -89,15 +89,15 @@ async function detectFaces() {
                         || predictions[i].bottomRight[0] > 650 
                         || predictions[i].bottomRight[1] > 450 
                         || predictions[i].bottomRight[1] < 140) {
-                        var date = new Date();
-                        var timeStamp = date.getTime();
+                        let date = new Date();
+                        let timeStamp = date.getTime();
                         capture("upp", timeStamp);
                         console.log("Person detected partially at " + timeStamp);
                     }
                     //if user's face is covered
                     else if (predictions[0].probability < 0.97) {
-                        var date = new Date();
-                        var timeStamp = date.getTime();
+                        let date = new Date();
+                        let timeStamp = date.getTime();
                         capture("ufc", timeStamp);
                         console.log("Users face is covered at: " + timeStamp);
                     }
@@ -116,9 +116,9 @@ function detectCalls() {
     recognition.onresult = function (event) {
         //check if words are detected
         if (event.results[event.results.length - 1][0]) {
-            var date = new Date();
-            var timeStamp = date.getTime();
-            var canvas = document.getElementById('canvas');
+            let date = new Date();
+            let timeStamp = date.getTime();
+            let canvas = document.getElementById('canvas');
             canvas.toBlob(function (blob) {
                 addToPCDArray(timeStamp, blob, "pcd", false, true);
             });
@@ -149,7 +149,7 @@ function stopCam() {
 }
 
 function capture(label, timestamp) {
-    var canvas = document.getElementById('canvas');
+    let canvas = document.getElementById('canvas');
     // capture
     canvas.toBlob(function (blob) {
         if (label == "unp") {
@@ -171,7 +171,7 @@ function capture(label, timestamp) {
 }
 
 async function postAnomalyData(anomalyData) {
-    var fd = new FormData();
+    let fd = new FormData();
     fd.append('userid', userId)
     fd.append('timestamp', anomalyData.timestamp);
     fd.append('image', anomalyData.imageData);
@@ -202,7 +202,7 @@ async function postAnomalyData(anomalyData) {
 }
 
 function addToArray(timestamp, imageData, label, dataArray) {
-    var newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: false, isLast: false, duration: 0 };
+    let newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: false, isLast: false, duration: 0 };
     // if it's the very first snapshot, save it
     if (dataArray.length == 0) {
         newEntry.isFirst = true;
@@ -240,7 +240,7 @@ function addToArray(timestamp, imageData, label, dataArray) {
 }
 
 function addToPCDArray(timestamp, imageData, label, first, last) {
-    var newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
+    let newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
     //check time interval. if time interval is less than 10 seconds replace the older snapshot with new one
     if (PCDArray.length > 0 && newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp < 10000) {
         newEntry.duration = newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp + PCDArray[PCDArray.length - 1].duration;
