@@ -16,15 +16,12 @@ function enableCam() {
     if (!objectDetectionModel && !fdmodel) {
         return;
     }
-    // Hide the button once clicked.
-    //enableWebcamButton.disabled = true;
     stopButton.disabled = false;
 
     // getUsermedia parameters to use both audio and video.
     const constraints = {
         video: true,
-        audio: true,
-        noiseSuppression: true
+        audio: true
     };
 
     // Activate the webcam stream.
@@ -36,8 +33,5 @@ function enableCam() {
     );
     navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
         video.srcObject = stream;
-        //startDetection();        
-        //video.addEventListener('loadeddata', detectFaces(video));
-        //video.addEventListener('loadeddata', detectObjects(video));
     });
 }

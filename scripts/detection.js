@@ -71,7 +71,6 @@ async function detectFaces() {
         if (predictions.length == 0) {
             var date = new Date();
             var timeStamp = date.getTime();
-            //FNDTimeArray.push(timeStamp);
             capture("unp", timeStamp);
             console.log("User not present at " + timeStamp);
         }
@@ -86,7 +85,10 @@ async function detectFaces() {
                         console.log("Muttiple people were detected at " + timeStamp);
                     }
                     //if person is not in the centre of the frame
-                    if (predictions[i].bottomRight[0] < 170 || predictions[i].bottomRight[0] > 650 || predictions[i].bottomRight[1] > 450 || predictions[i].bottomRight[1] < 140) {
+                    if (predictions[i].bottomRight[0] < 170 
+                        || predictions[i].bottomRight[0] > 650 
+                        || predictions[i].bottomRight[1] > 450 
+                        || predictions[i].bottomRight[1] < 140) {
                         var date = new Date();
                         var timeStamp = date.getTime();
                         capture("upp", timeStamp);
@@ -99,7 +101,6 @@ async function detectFaces() {
                         capture("ufc", timeStamp);
                         console.log("Users face is covered at: " + timeStamp);
                     }
-
                 }
             }
         }
@@ -121,6 +122,7 @@ function detectCalls() {
             canvas.toBlob(function (blob) {
                 addToPCDArray(timeStamp, blob, "pcd", false, true);
             });
+            console.log("Speech was detected at: " + timeStamp);
 
         }
     }
@@ -249,8 +251,6 @@ function addToPCDArray(timestamp, imageData, label, first, last) {
         PCDArray.push(newEntry);
         postAnomalyData(newEntry);
     }
-
-
 }
 
 function calculateLastAnomalyDuration(dataArray) {
