@@ -2,12 +2,19 @@ const video = document.getElementById('webcam');
 let modelLoadedEvent = new CustomEvent('modelLoaded');
 let stopFlag = false;
 
+//stores user not present anomaly
 let UNPArray = [];
+//stores user face covered anomaly
 let UFCArray = [];
+//stores user partially present anomaly
 let UPPArray = [];
+//stores electronic device found anomaly
 let EDFArray = [];
+//stores multiple people detected anomaly
 let MPDArray = [];
+//stores phone call detected anomaly
 let PCDArray = [];
+//stores data to be posted 
 let postArray = [];
 
 let userId;
@@ -17,18 +24,27 @@ var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
 var recognition = new SpeechRecognition();
 recognition.continuous = true;
 
-// load required models
-blazeface.load().then(function (loadedFmodel) {
-    fdmodel = loadedFmodel;
-    console.log("Blazeface model loaded");
-    cocoSsd.load().then(function (loadedOmodel) {
-        objectDetectionModel = loadedOmodel;
-        console.log("Coco-ssd model loaded");
-        // Show user that now model is ready to use.
-        console.log("Model loaded successfully......");
-        document.dispatchEvent(modelLoadedEvent);
+function loadModels(callback) {
+    blazeface.load().then(function (loadedFmodel) {
+        fdmodel = loadedFmodel;
+        console.log("Blazeface model loaded");
+        cocoSsd.load().then(function (loadedOmodel) {
+            objectDetectionModel = loadedOmodel;
+            console.log("Coco-ssd model loaded");
+            // Show user that now model is ready to use.
+            console.log("Model loaded successfully......");
+            document.dispatchEvent(modelLoadedEvent);
+            callback();
+        });
     });
-});
+
+}
+function startDetaction() {
+    video.addEventListener('loadeddata', detectFaces);
+    video.addEventListener('loadeddata', detectObjects);
+    video.addEventListener('loadeddata', detectCalls);
+}
+// load required models
 stopButton.addEventListener('click', stopCam);
 window.setInterval(function () { postDataFromArray(); }, 1000);
 function initData(token, userid) {
@@ -36,9 +52,7 @@ function initData(token, userid) {
     userId = userid;
 }
 
-video.addEventListener('loadeddata', detectFaces);
-video.addEventListener('loadeddata', detectObjects);
-video.addEventListener('loadeddata', detectCalls);
+
 
 
 async function detectObjects() {
@@ -86,9 +100,9 @@ async function detectFaces() {
                         console.log("Muttiple people were detected at " + timeStamp);
                     }
                     //if person is not in the centre of the frame
-                    if (predictions[i].bottomRight[0] < 170 
-                        || predictions[i].bottomRight[0] > 650 
-                        || predictions[i].bottomRight[1] > 450 
+                    if (predictions[i].bottomRight[0] < 170
+                        || predictions[i].bottomRight[0] > 650
+                        || predictions[i].bottomRight[1] > 450
                         || predictions[i].bottomRight[1] < 140) {
                         let date = new Date();
                         let timeStamp = date.getTime();
@@ -146,7 +160,7 @@ function stopCam() {
     calculateLastAnomalyDuration(UFCArray);
     postArray.push(PCDArray[PCDArray.length - 1]);
     //clear localStorage
-    auth_token="";
+    auth_token = "";
 }
 
 function capture(label, timestamp) {
