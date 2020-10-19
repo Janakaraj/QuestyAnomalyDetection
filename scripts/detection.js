@@ -22,6 +22,7 @@ let auth_token;
 //intialize the speech recognition object
 var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
 var recognition = new SpeechRecognition();
+//listen continously to the user
 recognition.continuous = true;
 
 //this function loads the models
@@ -38,7 +39,7 @@ function loadModels(callback) {
 
 //this function will start the detection
 function startDetaction() {
-    //calls the detection functions when loadeddata event on the video object is fired
+    //calls the detection functions when 'playing' event on the video object is fired
     video.addEventListener('playing', detectFaces);
     video.addEventListener('playing', detectObjects);
     video.addEventListener('playing', detectCalls);

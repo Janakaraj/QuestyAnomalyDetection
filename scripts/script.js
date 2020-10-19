@@ -7,10 +7,13 @@ const constraints = {
     audio: true
 };
 
+// checks media support
 if (getUserMediaSupported()) {
     navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
         streamv = stream;
     });
+
+    //initialize token, userid and stream when the models are loaded
     document.addEventListener('modelLoaded', () => {
         initializeData(token, userid, streamv)
     });
