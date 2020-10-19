@@ -47,8 +47,6 @@ function startDetaction() {
     video.addEventListener('playing', detectObjects);
     video.addEventListener('playing', detectCalls);
 }
-//stop button
-stopButton.addEventListener('click', stopCam);
 
 //calls postDataFromArraycfunction to post data in the postArray
 window.setInterval(function () { postDataFromArray(); }, 1000);
@@ -57,6 +55,11 @@ window.setInterval(function () { postDataFromArray(); }, 1000);
 function initData(token, userid) {
     this.auth_token = token;
     this.userId = userid;
+}
+function initializeData(token, userid, stream){
+    this.auth_token = token;
+    this.userId = userid;
+    video.srcObject = stream;
 }
 
 //this function will detect objects using the coco-sdd model
@@ -153,7 +156,7 @@ function detectCalls() {
 }
 
 //this function stops the detection process
-function stopCam() {
+function stopDetection() {
     window.cancelAnimationFrame(reqId);
     video.srcObject.getTracks().forEach(function (track) {
         track.stop();
@@ -295,7 +298,7 @@ function addToPCDArray(timestamp, imageData, label, first, last) {
     }
 }
 
-//this function computes the duration of the last pair of anomalies after the stopCam function is called
+//this function computes the duration of the last pair of anomalies after the stopDetection function is called
 function calculateLastAnomalyDuration(dataArray) {
     if (dataArray.length > 1) {
         if (dataArray[dataArray.length - 2].isFirst == true) {
