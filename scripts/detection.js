@@ -28,12 +28,8 @@ recognition.continuous = true;
 function loadModels(callback) {
     blazeface.load().then(function (loadedFmodel) {
         fdmodel = loadedFmodel;
-        console.log("Blazeface model loaded");
         cocoSsd.load().then(function (loadedOmodel) {
             objectDetectionModel = loadedOmodel;
-            console.log("Coco-ssd model loaded");
-            // Show user that now model is ready to use.
-            console.log("Model loaded successfully......");
             document.dispatchEvent(modelLoadedEvent);
             callback();
         });
@@ -78,7 +74,6 @@ async function detectObjects() {
                             let date = new Date();
                             let timeStamp = date.getTime();
                             capture("edf", timeStamp);
-                            console.log("Electronic device detected at " + timeStamp);
                         }
                     }
                 }
@@ -96,7 +91,6 @@ async function detectFaces() {
             let date = new Date();
             let timeStamp = date.getTime();
             capture("unp", timeStamp);
-            console.log("User not present at " + timeStamp);
         }
         else {
             for (let i = 0; i < predictions.length; i++) {
@@ -106,7 +100,6 @@ async function detectFaces() {
                         let date = new Date();
                         let timeStamp = date.getTime();
                         capture("mpd", timeStamp);
-                        console.log("Muttiple people were detected at " + timeStamp);
                     }
                     //if person is not in the centre of the frame
                     if (predictions[i].bottomRight[0] < 170
@@ -116,14 +109,12 @@ async function detectFaces() {
                         let date = new Date();
                         let timeStamp = date.getTime();
                         capture("upp", timeStamp);
-                        console.log("Person detected partially at " + timeStamp);
                     }
                     //if user's face is covered
                     else if (predictions[0].probability < 0.97) {
                         let date = new Date();
                         let timeStamp = date.getTime();
                         capture("ufc", timeStamp);
-                        console.log("Users face is covered at: " + timeStamp);
                     }
                 }
             }
@@ -147,8 +138,6 @@ function detectCalls() {
             canvas.toBlob(function (blob) {
                 addToPCDArray(timeStamp, blob, "pcd", false, true);
             });
-            console.log("Speech was detected at: " + timeStamp);
-
         }
     }
     // start recognition
@@ -231,7 +220,7 @@ async function postAnomalyData(anomalyData) {
             return response;
           })
 
-        // Displaying results to console 
+        // Displaying error to console 
         
         .catch((error) => {
             console.log(error)
@@ -313,6 +302,5 @@ function postDataFromArray() {
     if (globalThis.postArray.length > 0) {
         postAnomalyData(globalThis.postArray[0]);
         globalThis.postArray.splice(0, 1);
-        console.log(globalThis.postArray);
     }
 }
