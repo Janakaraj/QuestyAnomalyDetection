@@ -38,7 +38,7 @@ function loadModels(callback) {
 }
 
 //this function will start the detection
-function startDetaction() {
+function startDetection() {
     //calls the detection functions when 'playing' event on the video object is fired
     video.addEventListener('playing', detectFaces);
     video.addEventListener('playing', detectObjects);
@@ -191,7 +191,7 @@ function capture(label, timestamp) {
 //this function will post the data
 async function postAnomalyData(anomalyData) {
     let fd = new FormData();
-    fd.append('userid', this.userId)
+    fd.append('userId', this.userId)
     fd.append('timestamp', anomalyData.timestamp);
     fd.append('image', anomalyData.imageData);
     fd.append('anomalyLabel', anomalyData.label);
