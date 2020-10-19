@@ -1,29 +1,30 @@
 const video = document.getElementById('webcam');
 let modelLoadedEvent = new CustomEvent('modelLoaded');
 let stopFlag = false;
-
 //stores user not present anomaly
-let UNPArray = [];
+UNPArray = [];
 //stores user face covered anomaly
-let UFCArray = [];
+UFCArray = [];
 //stores user partially present anomaly
-let UPPArray = [];
+UPPArray = [];
 //stores electronic device found anomaly
-let EDFArray = [];
+EDFArray = [];
 //stores multiple people detected anomaly
-let MPDArray = [];
+MPDArray = [];
 //stores phone call detected anomaly
-let PCDArray = [];
-//stores data to be posted 
-let postArray = [];
-
+PCDArray = [];
+//stores data to be posted after the anomly is over 
+postArray = [];
+let globalThis = this;
 let userId;
 let auth_token;
 
+//intialize the speech recognition object
 var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
 var recognition = new SpeechRecognition();
 recognition.continuous = true;
 
+//this function loads the models
 function loadModels(callback) {
     blazeface.load().then(function (loadedFmodel) {
         fdmodel = loadedFmodel;
@@ -37,24 +38,28 @@ function loadModels(callback) {
             callback();
         });
     });
-
 }
+
+//this function will start the detection
 function startDetaction() {
+    //calls the detection functions when loadeddata event on the video object is fired
     video.addEventListener('loadeddata', detectFaces);
     video.addEventListener('loadeddata', detectObjects);
     video.addEventListener('loadeddata', detectCalls);
 }
-// load required models
+//stop button
 stopButton.addEventListener('click', stopCam);
+
+//calls postDataFromArraycfunction to post data in the postArray
 window.setInterval(function () { postDataFromArray(); }, 1000);
+
+//this function will assign the jwt token and the user id
 function initData(token, userid) {
-    localStorage.setItem('auth_token', token);
-    userId = userid;
+    this.auth_token = token;
+    this.userId = userid;
 }
 
-
-
-
+//this function will detect objects using the coco-sdd model
 async function detectObjects() {
     if (!stopFlag) {
         objectDetectionModel.detect(video).then((predictions) => {
@@ -80,6 +85,7 @@ async function detectObjects() {
     }
 }
 
+//this function will detect face using the blazeface model
 async function detectFaces() {
     if (!stopFlag) {
         const predictions = await fdmodel.estimateFaces(video, false);
@@ -126,6 +132,7 @@ async function detectFaces() {
     }
 }
 
+//this function detects speech with web speech api
 function detectCalls() {
     //when words are detected capture it as phone call detected anomaly
     recognition.onresult = function (event) {
@@ -145,6 +152,7 @@ function detectCalls() {
     recognition.start();
 }
 
+//this function stops the detection process
 function stopCam() {
     window.cancelAnimationFrame(reqId);
     video.srcObject.getTracks().forEach(function (track) {
@@ -153,41 +161,41 @@ function stopCam() {
     stopFlag = true;
     recognition.stop();
     //compute the duration of the last entry
-    calculateLastAnomalyDuration(UNPArray);
-    calculateLastAnomalyDuration(MPDArray);
-    calculateLastAnomalyDuration(UPPArray);
-    calculateLastAnomalyDuration(EDFArray);
-    calculateLastAnomalyDuration(UFCArray);
-    postArray.push(PCDArray[PCDArray.length - 1]);
-    //clear localStorage
-    auth_token = "";
+    calculateLastAnomalyDuration(globalThis.UNPArray);
+    calculateLastAnomalyDuration(globalThis.MPDArray);
+    calculateLastAnomalyDuration(globalThis.UPPArray);
+    calculateLastAnomalyDuration(globalThis.EDFArray);
+    calculateLastAnomalyDuration(globalThis.UFCArray);
+    globalThis.postArray.push(globalThis.PCDArray[globalThis.PCDArray.length - 1]);
 }
 
+//this function captures the snapshot and timestamp when anomaly is detected
 function capture(label, timestamp) {
     let canvas = document.getElementById('canvas');
     // capture
     canvas.toBlob(function (blob) {
         if (label == "unp") {
-            addToArray(timestamp, blob, "unp", UNPArray);
+            addToArray(timestamp, blob, "unp", globalThis.UNPArray);
         }
         if (label == "mpd") {
-            addToArray(timestamp, blob, "mpd", MPDArray);
+            addToArray(timestamp, blob, "mpd", globalThis.MPDArray);
         }
         if (label == "upp") {
-            addToArray(timestamp, blob, "upp", UPPArray);
+            addToArray(timestamp, blob, "upp", globalThis.UPPArray);
         }
         if (label == "edf") {
-            addToArray(timestamp, blob, "edf", EDFArray);
+            addToArray(timestamp, blob, "edf", globalThis.EDFArray);
         }
         if (label == "ufc") {
-            addToArray(timestamp, blob, "ufc", UFCArray);
+            addToArray(timestamp, blob, "ufc", globalThis.UFCArray);
         }
     });
 }
 
+//this function will post the data
 async function postAnomalyData(anomalyData) {
     let fd = new FormData();
-    fd.append('userid', userId)
+    fd.append('userid', this.userId)
     fd.append('timestamp', anomalyData.timestamp);
     fd.append('image', anomalyData.imageData);
     fd.append('anomalyLabel', anomalyData.label);
@@ -205,8 +213,7 @@ async function postAnomalyData(anomalyData) {
 
         // Adding headers to the request 
         headers: {
-            //"Content-type": "application/octet-stream",
-            "Authorization": `Bearer ${auth_token}`
+            "Authorization": `Bearer ${this.auth_token}`
         }
     })
         // Converting to JSON 
@@ -237,7 +244,7 @@ function addToArray(timestamp, imageData, label, dataArray) {
             postAnomalyData(newEntry);
             if (dataArray.length >= 3 && dataArray[dataArray.length - 2].isLast == true && dataArray[dataArray.length - 3].isFirst == true) {
                 dataArray[dataArray.length - 2].duration = dataArray[dataArray.length - 2].timestamp - dataArray[dataArray.length - 3].timestamp;
-                postArray.push(dataArray[dataArray.length - 2]);
+                globalThis.postArray.push(dataArray[dataArray.length - 2]);
             }
         }
         //if time interval is less than 5 seconds replace the older snapshot with new one
@@ -254,41 +261,43 @@ function addToArray(timestamp, imageData, label, dataArray) {
     }
 }
 
+//this function handles data entry in the PCDArray (phone call anomaly)
 function addToPCDArray(timestamp, imageData, label, first, last) {
     let newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
-    if (PCDArray.length == 0) {
+    if (globalThis.PCDArray.length == 0) {
         newEntry.isFirst = true;
-        PCDArray.push(newEntry);
+        globalThis.PCDArray.push(newEntry);
         postAnomalyData(newEntry);
     }
     //check time interval. if time interval is less than 10 seconds replace the older snapshot with new one
-    if (PCDArray.length > 0 && newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp < 10000) {
-        newEntry.duration = newEntry.timestamp - PCDArray[PCDArray.length - 1].timestamp + PCDArray[PCDArray.length - 1].duration;
-        PCDArray.pop();
-        PCDArray.push(newEntry);
+    if (globalThis.PCDArray.length > 0 && newEntry.timestamp - globalThis.PCDArray[globalThis.PCDArray.length - 1].timestamp < 10000) {
+        newEntry.duration = newEntry.timestamp - globalThis.PCDArray[globalThis.PCDArray.length - 1].timestamp + globalThis.PCDArray[globalThis.PCDArray.length - 1].duration;
+        globalThis.PCDArray.pop();
+        globalThis.PCDArray.push(newEntry);
     }
     //If greater than 10 seconds, save the snapshot 
     else {
-        postArray.push(PCDArray[PCDArray.length - 1]);
-        PCDArray.push(newEntry);
+        globalThis.postArray.push(globalThis.PCDArray[globalThis.PCDArray.length - 1]);
+        globalThis.PCDArray.push(newEntry);
         postAnomalyData(newEntry);
     }
 }
 
+//this function computes the duration of the last pair of anomalies after the stopCam function is called
 function calculateLastAnomalyDuration(dataArray) {
     if (dataArray.length > 1) {
         if (dataArray[dataArray.length - 2].isFirst == true) {
             dataArray[dataArray.length - 1].duration = dataArray[dataArray.length - 1].timestamp - dataArray[dataArray.length - 2].timestamp;
             dataArray[dataArray.length - 1].isLast = true;
-            postArray.push(dataArray[dataArray.length - 1]);
+            globalThis.postArray.push(dataArray[dataArray.length - 1]);
         }
     }
 }
 //posts data from the postArray as soon as it is computed
 function postDataFromArray() {
-    if (postArray.length > 0) {
-        postAnomalyData(postArray[0]);
-        postArray.splice(0, 1);
-        console.log(postArray);
+    if (globalThis.postArray.length > 0) {
+        postAnomalyData(globalThis.postArray[0]);
+        globalThis.postArray.splice(0, 1);
+        console.log(globalThis.postArray);
     }
 }
