@@ -43,9 +43,9 @@ function loadModels(callback) {
 //this function will start the detection
 function startDetaction() {
     //calls the detection functions when loadeddata event on the video object is fired
-    video.addEventListener('loadeddata', detectFaces);
-    video.addEventListener('loadeddata', detectObjects);
-    video.addEventListener('loadeddata', detectCalls);
+    video.addEventListener('playing', detectFaces);
+    video.addEventListener('playing', detectObjects);
+    video.addEventListener('playing', detectCalls);
 }
 //stop button
 stopButton.addEventListener('click', stopCam);
@@ -166,7 +166,10 @@ function stopCam() {
     calculateLastAnomalyDuration(globalThis.UPPArray);
     calculateLastAnomalyDuration(globalThis.EDFArray);
     calculateLastAnomalyDuration(globalThis.UFCArray);
-    globalThis.postArray.push(globalThis.PCDArray[globalThis.PCDArray.length - 1]);
+    if(globalThis.PCDArray.length>0){
+        globalThis.postArray.push(globalThis.PCDArray[globalThis.PCDArray.length - 1]);
+    }
+    
 }
 
 //this function captures the snapshot and timestamp when anomaly is detected
@@ -216,11 +219,20 @@ async function postAnomalyData(anomalyData) {
             "Authorization": `Bearer ${this.auth_token}`
         }
     })
+    .then(response => response.json())
         // Converting to JSON 
-        .then(response => response)
+        .then(response => {
+            if (!response.ok) {
+              throw new Error('Something went wrong.' + response.message);
+            }
+            return response;
+          })
 
         // Displaying results to console 
-        .then(json => console.log(json));
+        
+        .catch((error) => {
+            console.log(error)
+          });
 }
 
 function addToArray(timestamp, imageData, label, dataArray) {
