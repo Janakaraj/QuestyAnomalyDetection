@@ -5,8 +5,18 @@ var recognition = new SpeechRecognition();
 //listen continously to the user
 recognition.continuous = true;
 function detection() {
-    this.video = document.getElementById('webcam');
+    this.video = document.createElement('video');
+    this.video.autoplay = true;
+    this.video.muted = true;
+    this.video.height = 480;
+    this.video.width = 640;
+    document.body.appendChild(this.video);
+
     this.stopFlag = false;
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = "canvas";
+    this.canvas.setAttribute("style","overflow:auto");
+    document.body.appendChild(this.canvas);
     //stores user not present anomaly
     this.UNPArray = [];
     //stores user face covered anomaly
