@@ -15,7 +15,7 @@ function detection() {
     this.stopFlag = false;
     this.canvas = document.createElement('canvas');
     this.canvas.id = "canvas";
-    this.canvas.setAttribute("style","overflow:auto");
+    this.canvas.setAttribute("style", "overflow:auto");
     document.body.appendChild(this.canvas);
     //stores user not present anomaly
     this.UNPArray = [];
@@ -38,7 +38,7 @@ function detection() {
 //this function loads the models and returns true if models are loaded successfully and false if not
 // use the callback as : detectionInstance.loadModels((status)=>{return status})
 detection.prototype.loadModels = function (callback) {
-    try{
+    try {
         blazeface.load().then(function (loadedFmodel) {
             fdmodel = loadedFmodel;
             cocoSsd.load().then(function (loadedOmodel) {
@@ -48,30 +48,39 @@ detection.prototype.loadModels = function (callback) {
             });
         });
     }
-    catch(e){
+    catch (e) {
+        console.log("failed to load models...");
         callback(false);
     }
 }
 
 //this function will start the detection
 detection.prototype.startDetection = function () {
-    //calls the detection functions when 'playing' event on the video object is fired
-    detectionInstance.video.addEventListener('playing', () => { detectionInstance.detectFaces() });
-    detectionInstance.video.addEventListener('playing', () => { detectionInstance.detectObjects() });
-    detectionInstance.video.addEventListener('playing', () => { detectionInstance.detectCalls() });
+    //calls the detection functions when video has enough data
+    //Reference: https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
+    if (this.video.readyState === 4) {
+        detectionInstance.detectFaces();
+        detectionInstance.detectObjects();
+        detectionInstance.detectCalls();
+    }
 }
 
 //calls postDataFromArraycfunction to post data in the postArray
 window.setInterval(function () { detectionInstance.postDataFromArray(); }, 1000);
 
-//this function will assign the jwt token and the user id
-//pass startDetection as callback to this function bacause the initializeData function will trigger the 'playing' 
-//event so we have to start listening to the event before the event is fired
-detection.prototype.initializeData = function (token, userid, stream,callback) {
-    this.auth_token = token;
-    this.userId = userid;
-    callback();
-    this.video.srcObject = stream;
+//this function will assign the jwt token,user id and the stream
+detection.prototype.initializeData = function (token, userid, stream, callback) {
+    try {
+        this.auth_token = token;
+        this.userId = userid;
+        this.video.srcObject = stream;
+        callback(true);
+    }
+    catch (e) {
+        console.log("failed to initializing data...");
+        callback(false);
+    }
+
 }
 
 //this function will detect objects using the coco-sdd model
