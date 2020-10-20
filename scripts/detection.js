@@ -35,16 +35,22 @@ function detection() {
     this.auth_token;
 }
 
-//this function loads the models
+//this function loads the models and returns true if models are loaded successfully and false if not
+// use the callback as : detectionInstance.loadModels((status)=>{return status})
 detection.prototype.loadModels = function (callback) {
-    blazeface.load().then(function (loadedFmodel) {
-        fdmodel = loadedFmodel;
-        cocoSsd.load().then(function (loadedOmodel) {
-            objectDetectionModel = loadedOmodel;
-            console.log("models loaded...");
-            callback();
+    try{
+        blazeface.load().then(function (loadedFmodel) {
+            fdmodel = loadedFmodel;
+            cocoSsd.load().then(function (loadedOmodel) {
+                objectDetectionModel = loadedOmodel;
+                console.log("models loaded...");
+                callback(true);
+            });
         });
-    });
+    }
+    catch(e){
+        callback(false);
+    }
 }
 
 //this function will start the detection
@@ -59,10 +65,12 @@ detection.prototype.startDetection = function () {
 window.setInterval(function () { detectionInstance.postDataFromArray(); }, 1000);
 
 //this function will assign the jwt token and the user id
-
-detection.prototype.initializeData = function (token, userid, stream) {
+//pass startDetection as callback to this function bacause the initializeData function will trigger the 'playing' 
+//event so we have to start listening to the event before the event is fired
+detection.prototype.initializeData = function (token, userid, stream,callback) {
     this.auth_token = token;
     this.userId = userid;
+    callback();
     this.video.srcObject = stream;
 }
 
