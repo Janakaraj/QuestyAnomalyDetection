@@ -1,68 +1,65 @@
-const video = document.getElementById('webcam');
-let modelLoadedEvent = new CustomEvent('modelLoaded');
-let stopFlag = false;
-//stores user not present anomaly
-UNPArray = [];
-//stores user face covered anomaly
-UFCArray = [];
-//stores user partially present anomaly
-UPPArray = [];
-//stores electronic device found anomaly
-EDFArray = [];
-//stores multiple people detected anomaly
-MPDArray = [];
-//stores phone call detected anomaly
-PCDArray = [];
-//stores data to be posted after the anomly is over 
-postArray = [];
-let globalThis = this;
-let userId;
-let auth_token;
-
+detectionInstance = new detection();
 //intialize the speech recognition object
 var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
 var recognition = new SpeechRecognition();
 //listen continously to the user
 recognition.continuous = true;
+function detection() {
+    this.video = document.getElementById('webcam');
+    this.stopFlag = false;
+    //stores user not present anomaly
+    this.UNPArray = [];
+    //stores user face covered anomaly
+    this.UFCArray = [];
+    //stores user partially present anomaly
+    this.UPPArray = [];
+    //stores electronic device found anomaly
+    this.EDFArray = [];
+    //stores multiple people detected anomaly
+    this.MPDArray = [];
+    //stores phone call detected anomaly
+    this.PCDArray = [];
+    //stores data to be posted after the anomly is over 
+    this.postArray = [];
+    this.userId;
+    this.auth_token;
+}
 
 //this function loads the models
-function loadModels(callback) {
+detection.prototype.loadModels = function (callback) {
     blazeface.load().then(function (loadedFmodel) {
         fdmodel = loadedFmodel;
         cocoSsd.load().then(function (loadedOmodel) {
             objectDetectionModel = loadedOmodel;
-            document.dispatchEvent(modelLoadedEvent);
+            console.log("models loaded...");
             callback();
         });
     });
 }
 
 //this function will start the detection
-function startDetection() {
+detection.prototype.startDetection = function () {
     //calls the detection functions when 'playing' event on the video object is fired
-    video.addEventListener('playing', detectFaces);
-    video.addEventListener('playing', detectObjects);
-    video.addEventListener('playing', detectCalls);
+    detectionInstance.video.addEventListener('playing', () => { detectionInstance.detectFaces() });
+    detectionInstance.video.addEventListener('playing', () => { detectionInstance.detectObjects() });
+    detectionInstance.video.addEventListener('playing', () => { detectionInstance.detectCalls() });
 }
 
 //calls postDataFromArraycfunction to post data in the postArray
-window.setInterval(function () { postDataFromArray(); }, 1000);
+window.setInterval(function () { detectionInstance.postDataFromArray(); }, 1000);
 
 //this function will assign the jwt token and the user id
-function initData(token, userid) {
+
+detection.prototype.initializeData = function (token, userid, stream) {
     this.auth_token = token;
     this.userId = userid;
-}
-function initializeData(token, userid, stream){
-    this.auth_token = token;
-    this.userId = userid;
-    video.srcObject = stream;
+    this.video.srcObject = stream;
 }
 
 //this function will detect objects using the coco-sdd model
-async function detectObjects() {
-    if (!stopFlag) {
-        objectDetectionModel.detect(video).then((predictions) => {
+detection.prototype.detectObjects = async function () {
+    if (!this.stopFlag) {
+        objectDetectionModel.detect(detectionInstance.video).then((predictions) => {
             if (predictions.length > 0) {
                 for (let n = 0; n < predictions.length; n++) {
                     //if the prediction score is greater than 0.66 its a valid prediction
@@ -74,24 +71,24 @@ async function detectObjects() {
                             || predictions[n].class == "tv") {
                             let date = new Date();
                             let timeStamp = date.getTime();
-                            capture("edf", timeStamp);
+                            detectionInstance.capture("edf", timeStamp);
                         }
                     }
                 }
             }
-            window.setTimeout(function () { reqId = window.requestAnimationFrame(detectObjects) }, 1000);
+            window.setTimeout(function () { reqId = window.requestAnimationFrame(detectionInstance.detectObjects) }, 1000);
         });
     }
 }
 
 //this function will detect face using the blazeface model
-async function detectFaces() {
-    if (!stopFlag) {
-        const predictions = await fdmodel.estimateFaces(video, false);
+detection.prototype.detectFaces = async function () {
+    if (!this.stopFlag) {
+        const predictions = await fdmodel.estimateFaces(detectionInstance.video, false);
         if (predictions.length == 0) {
             let date = new Date();
             let timeStamp = date.getTime();
-            capture("unp", timeStamp);
+            detectionInstance.capture("unp", timeStamp);
         }
         else {
             for (let i = 0; i < predictions.length; i++) {
@@ -100,7 +97,7 @@ async function detectFaces() {
                     if (predictions.length > 1) {
                         let date = new Date();
                         let timeStamp = date.getTime();
-                        capture("mpd", timeStamp);
+                        detectionInstance.capture("mpd", timeStamp);
                     }
                     //if person is not in the centre of the frame
                     if (predictions[i].bottomRight[0] < 170
@@ -109,26 +106,26 @@ async function detectFaces() {
                         || predictions[i].bottomRight[1] < 140) {
                         let date = new Date();
                         let timeStamp = date.getTime();
-                        capture("upp", timeStamp);
+                        detectionInstance.capture("upp", timeStamp);
                     }
                     //if user's face is covered
                     else if (predictions[0].probability < 0.97) {
                         let date = new Date();
                         let timeStamp = date.getTime();
-                        capture("ufc", timeStamp);
+                        detectionInstance.capture("ufc", timeStamp);
                     }
                 }
             }
         }
         //check whether to continue or not
-        if (stopFlag == false) {
-            window.setTimeout(function () { detectFaces() }, 1000);
+        if (this.stopFlag == false) {
+            window.setTimeout(function () { detectionInstance.detectFaces() }, 1000);
         }
     }
 }
 
 //this function detects speech with web speech api
-function detectCalls() {
+detection.prototype.detectCalls = function () {
     //when words are detected capture it as phone call detected anomaly
     recognition.onresult = function (event) {
         //check if words are detected
@@ -137,7 +134,7 @@ function detectCalls() {
             let timeStamp = date.getTime();
             let canvas = document.getElementById('canvas');
             canvas.toBlob(function (blob) {
-                addToPCDArray(timeStamp, blob, "pcd", false, true);
+                detectionInstance.addToPCDArray(timeStamp, blob, "pcd", false, true);
             });
         }
     }
@@ -146,50 +143,50 @@ function detectCalls() {
 }
 
 //this function stops the detection process
-function stopDetection() {
+detection.prototype.stopDetection = function () {
     window.cancelAnimationFrame(reqId);
-    video.srcObject.getTracks().forEach(function (track) {
+    this.video.srcObject.getTracks().forEach(function (track) {
         track.stop();
     });
-    stopFlag = true;
+    this.stopFlag = true;
     recognition.stop();
     //compute the duration of the last entry
-    calculateLastAnomalyDuration(globalThis.UNPArray);
-    calculateLastAnomalyDuration(globalThis.MPDArray);
-    calculateLastAnomalyDuration(globalThis.UPPArray);
-    calculateLastAnomalyDuration(globalThis.EDFArray);
-    calculateLastAnomalyDuration(globalThis.UFCArray);
-    if(globalThis.PCDArray.length>0){
-        globalThis.postArray.push(globalThis.PCDArray[globalThis.PCDArray.length - 1]);
+    detectionInstance.calculateLastAnomalyDuration(this.UNPArray);
+    detectionInstance.calculateLastAnomalyDuration(this.MPDArray);
+    detectionInstance.calculateLastAnomalyDuration(this.UPPArray);
+    detectionInstance.calculateLastAnomalyDuration(this.EDFArray);
+    detectionInstance.calculateLastAnomalyDuration(this.UFCArray);
+    if (this.PCDArray.length > 0) {
+        this.postArray.push(this.PCDArray[this.PCDArray.length - 1]);
     }
-    
+
 }
 
 //this function captures the snapshot and timestamp when anomaly is detected
-function capture(label, timestamp) {
+detection.prototype.capture = function (label, timestamp) {
     let canvas = document.getElementById('canvas');
     // capture
     canvas.toBlob(function (blob) {
         if (label == "unp") {
-            addToArray(timestamp, blob, "unp", globalThis.UNPArray);
+            detectionInstance.addToArray(timestamp, blob, "unp", detectionInstance.UNPArray);
         }
         if (label == "mpd") {
-            addToArray(timestamp, blob, "mpd", globalThis.MPDArray);
+            detectionInstance.addToArray(timestamp, blob, "mpd", detectionInstance.MPDArray);
         }
         if (label == "upp") {
-            addToArray(timestamp, blob, "upp", globalThis.UPPArray);
+            detectionInstance.addToArray(timestamp, blob, "upp", detectionInstance.UPPArray);
         }
         if (label == "edf") {
-            addToArray(timestamp, blob, "edf", globalThis.EDFArray);
+            detectionInstance.addToArray(timestamp, blob, "edf", detectionInstance.EDFArray);
         }
         if (label == "ufc") {
-            addToArray(timestamp, blob, "ufc", globalThis.UFCArray);
+            detectionInstance.addToArray(timestamp, blob, "ufc", detectionInstance.UFCArray);
         }
     });
 }
 
 //this function will post the data
-async function postAnomalyData(anomalyData) {
+detection.prototype.postAnomalyData = async function (anomalyData) {
     let fd = new FormData();
     fd.append('userId', this.userId)
     fd.append('timestamp', anomalyData.timestamp);
@@ -212,29 +209,29 @@ async function postAnomalyData(anomalyData) {
             "Authorization": `Bearer ${this.auth_token}`
         }
     })
-    .then(response => response.json())
+        .then(response => response.json())
         // Converting to JSON 
         .then(response => {
             if (!response.ok) {
-              throw new Error('Something went wrong.' + response.message);
+                throw new Error('Something went wrong.' + response.message);
             }
             return response;
-          })
+        })
 
         // Displaying error to console 
-        
+
         .catch((error) => {
             console.log(error)
-          });
+        });
 }
 
-function addToArray(timestamp, imageData, label, dataArray) {
+detection.prototype.addToArray = function (timestamp, imageData, label, dataArray) {
     let newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: false, isLast: false, duration: 0 };
     // if it's the very first snapshot, save it
     if (dataArray.length == 0) {
         newEntry.isFirst = true;
         dataArray.push(newEntry);
-        postAnomalyData(newEntry);
+        detectionInstance.postAnomalyData(newEntry);
     }
     else {
         //discard single frame captures
@@ -246,10 +243,10 @@ function addToArray(timestamp, imageData, label, dataArray) {
             dataArray[dataArray.length - 1].isLast = true;
             newEntry.isFirst = true;
             dataArray.push(newEntry);
-            postAnomalyData(newEntry);
+            detectionInstance.postAnomalyData(newEntry);
             if (dataArray.length >= 3 && dataArray[dataArray.length - 2].isLast == true && dataArray[dataArray.length - 3].isFirst == true) {
                 dataArray[dataArray.length - 2].duration = dataArray[dataArray.length - 2].timestamp - dataArray[dataArray.length - 3].timestamp;
-                globalThis.postArray.push(dataArray[dataArray.length - 2]);
+                this.postArray.push(dataArray[dataArray.length - 2]);
             }
         }
         //if time interval is less than 5 seconds replace the older snapshot with new one
@@ -267,41 +264,41 @@ function addToArray(timestamp, imageData, label, dataArray) {
 }
 
 //this function handles data entry in the PCDArray (phone call anomaly)
-function addToPCDArray(timestamp, imageData, label, first, last) {
+detection.prototype.addToPCDArray = function (timestamp, imageData, label, first, last) {
     let newEntry = { timestamp: timestamp, imageData: imageData, label: label, isFirst: first, isLast: last, duration: 1 };
-    if (globalThis.PCDArray.length == 0) {
+    if (this.PCDArray.length == 0) {
         newEntry.isFirst = true;
-        globalThis.PCDArray.push(newEntry);
-        postAnomalyData(newEntry);
+        this.PCDArray.push(newEntry);
+        detectionInstance.postAnomalyData(newEntry);
     }
     //check time interval. if time interval is less than 10 seconds replace the older snapshot with new one
-    if (globalThis.PCDArray.length > 0 && newEntry.timestamp - globalThis.PCDArray[globalThis.PCDArray.length - 1].timestamp < 10000) {
-        newEntry.duration = newEntry.timestamp - globalThis.PCDArray[globalThis.PCDArray.length - 1].timestamp + globalThis.PCDArray[globalThis.PCDArray.length - 1].duration;
-        globalThis.PCDArray.pop();
-        globalThis.PCDArray.push(newEntry);
+    if (this.PCDArray.length > 0 && newEntry.timestamp - this.PCDArray[this.PCDArray.length - 1].timestamp < 10000) {
+        newEntry.duration = newEntry.timestamp - this.PCDArray[this.PCDArray.length - 1].timestamp + this.PCDArray[this.PCDArray.length - 1].duration;
+        this.PCDArray.pop();
+        this.PCDArray.push(newEntry);
     }
     //If greater than 10 seconds, save the snapshot 
     else {
-        globalThis.postArray.push(globalThis.PCDArray[globalThis.PCDArray.length - 1]);
-        globalThis.PCDArray.push(newEntry);
-        postAnomalyData(newEntry);
+        this.postArray.push(this.PCDArray[this.PCDArray.length - 1]);
+        this.PCDArray.push(newEntry);
+        detectionInstance.postAnomalyData(newEntry);
     }
 }
 
 //this function computes the duration of the last pair of anomalies after the stopDetection function is called
-function calculateLastAnomalyDuration(dataArray) {
+detection.prototype.calculateLastAnomalyDuration = function (dataArray) {
     if (dataArray.length > 1) {
         if (dataArray[dataArray.length - 2].isFirst == true) {
             dataArray[dataArray.length - 1].duration = dataArray[dataArray.length - 1].timestamp - dataArray[dataArray.length - 2].timestamp;
             dataArray[dataArray.length - 1].isLast = true;
-            globalThis.postArray.push(dataArray[dataArray.length - 1]);
+            this.postArray.push(dataArray[dataArray.length - 1]);
         }
     }
 }
 //posts data from the postArray as soon as it is computed
-function postDataFromArray() {
-    if (globalThis.postArray.length > 0) {
-        postAnomalyData(globalThis.postArray[0]);
-        globalThis.postArray.splice(0, 1);
+detection.prototype.postDataFromArray = function () {
+    if (this.postArray.length > 0) {
+        detectionInstance.postAnomalyData(this.postArray[0]);
+        this.postArray.splice(0, 1);
     }
 }

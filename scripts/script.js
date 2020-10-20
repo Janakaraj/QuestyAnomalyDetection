@@ -12,11 +12,6 @@ if (getUserMediaSupported()) {
     navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
         streamv = stream;
     });
-
-    //initialize token, userid and stream when the models are loaded
-    document.addEventListener('modelLoaded', () => {
-        initializeData(token, userid, streamv)
-    });
 } else {
     console.warn('getUserMedia() is not supported by your browser');
 }
